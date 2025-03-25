@@ -15,7 +15,8 @@ class MyData(Dataset):
                 transforms.Normalize(mean = [0.0, 0.0, 0.0], std = [1.0, 1.0, 1.0])
             ]
         )
-        self.dataset = pd.read_csv(self.csv_file)
+        self.dataset = pd.read_csv(self.csv_file, encoding="latin1")
+
     def __len__(self):
         return len(self.dataset)
     def __getitem(self, idx):
