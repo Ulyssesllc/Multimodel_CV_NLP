@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 # def __init__(self, csv_file, img_file):
 csv_file = "training_data.csv"
-img_dir = "Multimodals"
+img_dir = "amazon_dataset"
 dataset = MyData(csv_file, img_dir)
 
 
