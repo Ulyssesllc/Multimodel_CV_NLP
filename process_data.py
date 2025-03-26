@@ -16,12 +16,14 @@ class MyData(Dataset):
             ]
         )
         self.dataset = pd.read_csv(self.csv_file, delimiter=";", encoding="latin1")
+        self.dataset['img_path'] = self.dataset['img_path'].str.replace(r'\\', '/', regex=True)
         # self.dataset = pd.read_csv(self.csv_file, encoding="latin1")
 
     def __len__(self):
         return len(self.dataset)
     def __getitem__(self, idx):
-        self.dataset.loc[idx, 'img_path'] = self.dataset.loc[idx, 'img_path'].replace('imgamazon\', '')
+        
+        self.dataset.loc[idx, 'img_path'] = self.dataset.loc[idx, 'img_path'].replace('imgamazon/', '')
         item = self.dataset.iloc[idx]
     #######  IMAGE ######
         img_path = os.path.join(self.img_file, str(item['img_path']))
