@@ -20,7 +20,7 @@ class MyData(Dataset):
 
     def __len__(self):
         return len(self.dataset)
-    def __getitem(self, idx):
+    def __getitem__(self, idx):
         item = self.dataset.iloc[idx]
     #######  IMAGE ######
         img_path = os.path.join(self.img_file, str(item['img_path']))
