@@ -52,7 +52,7 @@ def test(model, dataloader):
     with torch.no_grad():
         for batch in dataloader:
             img = batch['image'].to(device)
-            text = batch['text'].to(device)
+            text = batch['text']
             label = batch['label'].to(device)
             output = model(img, text)
             loss = criterion(output, label)
