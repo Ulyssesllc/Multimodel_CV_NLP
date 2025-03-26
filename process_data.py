@@ -34,5 +34,5 @@ class MyData(Dataset):
 
         text = str(item['description'])
         label = torch.tensor(int(item["label_id"])-1, dtype = torch.long)
-        return image, text, label
+        return {"image": image, "text": text, "label": label}
         
