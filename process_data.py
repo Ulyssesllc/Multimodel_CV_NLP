@@ -16,6 +16,8 @@ class MyData(Dataset):
             ]
         )
         self.dataset = pd.read_csv(self.csv_file, delimiter=";", encoding="latin1")
+        # self.dataset = pd.read_csv(self.csv_file, encoding="latin1")
+
     def __len__(self):
         return len(self.dataset)
     def __getitem(self, idx):
