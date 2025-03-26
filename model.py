@@ -18,7 +18,7 @@ class TextEncoder(nn.Module):
         self.bert = BertModel.from_pretrained("bert-base-uncased")
         
     def forward(self, text):
-        tokens = self.tokenizer(text, padding = True, truncation = True, return_tensor = "pt")
+        tokens = self.tokenizer(text, padding=True, truncation=True, return_tensors="pt").to(self.bert.device)
         output = self.bert(input_ids = tokens["input_ids"], attention_mask = tokens["attention_mask"])
         return output.last_hidden_state[:, 0, :]
 class FusionModule(nn.Module):
