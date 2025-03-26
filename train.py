@@ -32,7 +32,7 @@ def train(model, dataloader, epochs = 15, lr = 0.001):
         total_loss = 0 
         for batch in dataloader:
             img = batch['image'].to(device)
-            text = batch['text'].to(device)
+            text = batch['text']
             label = batch['label'].to(device)
             optimizer.zero_grad()
             output = model(img, text)
