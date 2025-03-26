@@ -26,7 +26,7 @@ class MyData(Dataset):
         img_path = os.path.join(self.img_file, str(item['img_path']))
         if not os.path.exists(img_path):
             print(f"File not found {img_path}")
-            img_path = "imgamazon/31bNhi6E3eL._AC_.jpg"
+            img_path = "amazon_dataset/31bNhi6E3eL._AC_.jpg"
         image = Image.open(img_path).convert("RGB")
         image = self.transform(image)
     ####### TEXT ########
