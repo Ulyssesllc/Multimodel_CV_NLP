@@ -22,8 +22,7 @@ class MyData(Dataset):
     def __len__(self):
         return len(self.dataset)
     def __getitem__(self, idx):
-        
-        self.dataset.loc[idx, 'img_path'] = self.dataset.loc[idx, 'img_path'].replace('imgamazon/', '')
+        self.dataset.loc[idx, 'img_path'] = str(self.dataset.loc[idx, 'img_path']).replace('imgamazon/', '')
         item = self.dataset.iloc[idx]
     #######  IMAGE ######
         img_path = os.path.join(self.img_file, str(item['img_path']))
