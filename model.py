@@ -27,6 +27,7 @@ class FusionModule(nn.Module):
         self.img_encoder = ImageEncoder()
         self.text_encoder = TextEncoder()
         self.text_fc = nn.Linear(768,512)   # text_vector to size 512
+        self.fusion = nn.Linear(1024,512)
         self.fc_layer = nn.Linear(512,512)
         self.final_fc = nn.Linear(512,10)
         
@@ -35,7 +36,7 @@ class FusionModule(nn.Module):
         text = self.text_encoder(text)
         text = self.text_fc(text)
         combined = torch.cat((img, text), dim = 1)
-        combined = nn.Linear(1024,512).to(combined.device)(combined)
+        combined = self.fusion(combined)
         combined = self.fc_layer(combined)
         output = self.final_fc(combined)
         return output
