@@ -1,4 +1,4 @@
-# 🍜 Multimodal Food Classification with Text & Image (FOOD-101)
+#  Multimodal Food Classification with Text & Image (FOOD-101)
 
 This repository explores multimodal deep learning techniques for food classification using the [FOOD-101 dataset](https://data.vision.ee.ethz.ch/cvl/datasets_extra/food-101/), which includes **image** and **text** data. Our goal is to accurately classify food categories using a combination of visual and textual modalities.
 
