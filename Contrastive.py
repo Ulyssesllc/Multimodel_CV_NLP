@@ -108,4 +108,31 @@ class AttentionModule(nn.Module):
         # output = self.final_fc(combined)
         output = self.fusion(combined)
         return output, logit_img, logit_text
-        
+
+def compute_itc_loss(img_feat, text_feat, temperature=0.07):
+    """
+    img_feat: Tensor [B, D]
+    text_feat: Tensor [B, D]
+    """
+    # Normalize embeddings
+    img_feat = F.normalize(img_feat, dim=-1)
+    text_feat = F.normalize(text_feat, dim=-1)
+
+    # Cosine similarity: [B, B]
+    logits_per_image = img_feat @ text_feat.T
+    logits_per_text = text_feat @ img_feat.T
+
+    # Apply temperature
+    logits_per_image /= temperature
+    logits_per_text /= temperature
+
+    # Ground-truth: diagonal (same index)
+    targets = torch.arange(img_feat.size(0)).to(img_feat.device)
+
+    # Cross entropy
+    loss_i2t = F.cross_entropy(logits_per_image, targets)
+    loss_t2i = F.cross_entropy(logits_per_text, targets)
+    
+    # Final ITC loss
+    loss = (loss_i2t + loss_t2i) / 2
+    return loss
