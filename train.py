@@ -1,4 +1,4 @@
-from model import FusionModule
+from MLP import FusionModule
 import torch
 import torch.optim as optim
 import torch.nn as nn
@@ -22,44 +22,76 @@ test_data = DataLoader(test_dataset, batch_size = 8, shuffle= False )
 
 model = FusionModule()
 
-def train(model, dataloader, epochs = 15, lr = 0.001):
+def train(model, dataloader, epochs = 10):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr = lr)
+    optimizer = AdamW([
+    {
+        'params': model.text_encoder.bert.parameters(),
+        'lr': 2e-5,
+        'weight_decay': 0.01
+    },
+    {
+        'params': model.q_mlp.parameters(),
+        'lr': 1e-3,
+        'weight_decay': 0.01
+    },
+    {
+        'params': model.fusion.parameters(),
+        'lr': 1e-3,
+        'weight_decay': 0.01
+    },
+    {
+        'params': model.cross_Q.parameters(),
+        'lr': 1e-3,
+        'weight_decay': 0.01
+    }
+])
+
     for epoch in range(epochs):
         model.train()
         total_loss = 0 
+        correct = 0
         for batch in dataloader:
             img = batch['image'].to(device)
-            text = batch['text']
+            input_ids = batch['input_ids'].to(device)
+            attention_mask = batch['attention_mask'].to(device)
             label = batch['label'].to(device)
             optimizer.zero_grad()
-            output = model(img, text)
-            loss = criterion(output, label)
+            output, logit_img, logit_text = model(img, input_ids, attention_mask)
+            loss = criterion(output, label) + compute_itc_loss(logit_img, logit_text)
+            
+            prediction = output.argmax(dim = 1)
+            correct+= (prediction == label).sum().item()
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
             total_loss += loss.item()
-            
-        print(f"Epoch {epoch+1} / {epochs}, Loss:{total_loss/ len(dataloader)}")
-    
+        result_test = test(model, test_data)
+        torch.save(model.state_dict(), f'epoch_{epoch}.pth')
+        # print(f"Epoch {epoch+1} / {epochs}, Loss:{total_loss/ len(dataloader)}, Accuracy: {correct/train_size}, Test_accuracy: {result_test}")
+        log_message = f"Epoch {epoch+1} / {epochs}, Loss: {total_loss / len(dataloader):.4f}, Accuracy: {correct / train_size:.4f}, Test_accuracy: {result_test:.4f}"
+        print(log_message)
+
+# Save to log file
+        with open("training_log.txt", "a") as f:
+            f.write(log_message + "\n")
 def test(model, dataloader):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     criterion = nn.CrossEntropyLoss()
     model.eval()
-    total_loss = 0 
+    correct = 0
     with torch.no_grad():
         for batch in dataloader:
             img = batch['image'].to(device)
-            text = batch['text']
+            input_ids = batch['input_ids'].to(device)
+            attention_mask = batch['attention_mask'].to(device)
             label = batch['label'].to(device)
-            output = model(img, text)
-            loss = criterion(output, label)
-            total_loss += loss.item()
-        return total_loss/ len(dataloader)
-
-train(model, train_data)
-print(test(model, test_data))
+            output, logit_img, logit_text = model(img, input_ids, attention_mask)
+            predictions = output.argmax(dim=1)  # Get predicted labels
+            correct += (predictions == label).sum().item()
+    return correct/test_size
             
     
