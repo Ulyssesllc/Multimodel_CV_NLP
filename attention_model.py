@@ -1,4 +1,4 @@
-from model import  ImageEncoder, TextEncoder
+from MLP import  ImageEncoder, TextEncoder
 import torch   
 import torch.nn as nn 
 
