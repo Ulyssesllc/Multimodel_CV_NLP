@@ -22,7 +22,7 @@ test_data = DataLoader(test_dataset, batch_size = 8, shuffle= False )
 
 model = FusionModule()
 
-def train(model, dataloader, epochs = 10):
+def train(model, dataloader, epochs):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     criterion = nn.CrossEntropyLoss()

@@ -21,9 +21,9 @@ class TextEncoder(nn.Module):
         tokens = self.tokenizer(text, padding=True, truncation=True, return_tensors="pt").to(self.bert.device)
         output = self.bert(input_ids = tokens["input_ids"], attention_mask = tokens["attention_mask"])
         return output.last_hidden_state[:, 0, :]
-class FusionModule(nn.Module):
+class MLP_fusion(nn.Module):
     def __init__(self):
-        super(FusionModule, self).__init__()
+        super(MLP_fusion, self).__init__()
         self.img_encoder = ImageEncoder()
         self.text_encoder = TextEncoder()
         self.text_fc = nn.Linear(768,512)   # text_vector to size 512

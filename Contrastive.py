@@ -57,9 +57,9 @@ class AddNorm(nn.Module):
         self.norm = nn.LayerNorm(embed_dim, eps = eps)
     def forward(self, x, sublayer_output):
         return self.norm(x+sublayer_output)
-class AttentionModule(nn.Module):
+class Q_cons_fusion(nn.Module):
     def __init__(self, num_query_tokens = 32, hidden_dim = 768):
-        super(AttentionModule, self).__init__()
+        super(Q_cons_fusion, self).__init__()
         self.num_query_tokens = num_query_tokens
         self.hidden_dim = hidden_dim
         self.query_tokens = nn.Parameter(torch.randn(num_query_tokens, hidden_dim))  # [32, 768]
