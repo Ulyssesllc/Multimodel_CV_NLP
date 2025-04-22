@@ -1,11 +1,10 @@
-from MLP import FusionModule
 import torch
 import torch.optim as optim
 import torch.nn as nn
 from process_data import MyData 
 from torch.utils.data import random_split
 from torch.utils.data import DataLoader
-
+from Contrastive import compute_itc_loss
 
 def train(model, csv_file, img_dir, epochs):
     dataset = MyData(csv_file, img_dir) 
