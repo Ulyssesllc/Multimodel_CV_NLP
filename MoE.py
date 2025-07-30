@@ -73,7 +73,9 @@ class MoE(nn.Module):
         self.experts = nn.ModuleList([
             nn.Sequential(
                 nn.Linear(2*hidden_size, hidden_size),
+                nn.LayerNorm(hidden_size),
                 nn.ReLU(inplace=True),
+                nn.Dropout(0.2),
                 nn.Linear(hidden_size, num_classes)
             )
             for _ in range(num_experts)
@@ -110,13 +112,21 @@ class MoE(nn.Module):
 
         #    final_logits: [B, num_classes]
         final_logits = torch.zeros([trunk_out.size(0), self.num_classes], device=trunk_out.device)
-        for i in range(self.num_experts):
-            expert = self.experts[i]
-            # Apply expert only to the top-k masked tokens
-            # expert_outs: [B, num_classes]
-            expert_output = expert(trunk_out)
-            expert_mask = mask[:, i].unsqueeze(1)  # [B, 1]
-            final_logits+= expert_output * expert_mask
+        for expert_id in range(self.num_experts):
+    # 2. Lấy index của samples route vào expert này
+            mask_e = mask[:, expert_id]        # shape [B]
+            selected_idx = (mask_e > 0).nonzero(as_tuple=False).squeeze()
+
+            if selected_idx.numel() == 0:
+                continue
+            if selected_idx.ndim == 0:  
+                selected_idx = selected_idx.unsqueeze(0)   # biến scalar -> [1]
+
+            x_selected = trunk_out[selected_idx]                       # [S, D]
+            weight_selected = mask_e[selected_idx].unsqueeze(1)        # [S, 1]
+            output_selected = self.experts[expert_id](x_selected)      # [S, C]
+            output_selected = output_selected * weight_selected
+            final_logits[selected_idx] += output_selected
             
         # expert_outs = torch.stack([expert(trunk_out) for expert in self.experts], dim=1)
         # final_logits = (expert_outs * mask.unsqueeze(-1)).sum(dim=1)
