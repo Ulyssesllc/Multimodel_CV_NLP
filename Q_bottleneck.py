@@ -118,29 +118,27 @@ class MoE(nn.Module):
         self.load_balance_coef = load_balance_coef
         self.num_classes = num_classes
         # Routing head
-        self.router = nn.ModuleList([
-            nn.Sequential(
+        self.router =nn.Sequential(
                 nn.Linear(hidden_size, hidden_size),
                 nn.LayerNorm(hidden_size),
                 nn.ReLU(),
                 nn.Dropout(0.2),
                 nn.Linear(hidden_size,num_experts)
             )
-        ])
-                
+          
 
         # Expert sub‑networks
         self.experts = nn.ModuleList([
             nn.Sequential(
-                nn.Linear(hidden_size, hidden_size),
+                nn.Linear(hidden_size, 4*hidden_size),
+                nn.LayerNorm(4*hidden_size),
+                nn.ReLU(inplace=True),
+                nn.Dropout(0.2),
+                nn.Linear(4*hidden_size, hidden_size),
                 nn.LayerNorm(hidden_size),
                 nn.ReLU(inplace=True),
                 nn.Dropout(0.2),
-                nn.Linear(hidden_size, hidden_size//2),
-                nn.LayerNorm(hidden_size//2),
-                nn.ReLU(inplace=True),
-                nn.Dropout(0.2),
-                nn.Linear(hidden_size//2, num_classes)
+                nn.Linear(hidden_size, num_classes)
             )
             for _ in range(num_experts)
         ])
