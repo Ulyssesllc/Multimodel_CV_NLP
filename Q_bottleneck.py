@@ -85,6 +85,9 @@ class Gate_way(nn.Module):
             nn.Linear(2* embed_dim, embed_dim),
             nn.ReLU(),
             nn.Dropout(0.2),
+            nn.Linear(embed_dim, embed_dim),
+            nn.ReLU(),
+            nn.Dropout(0.2),
             nn.Linear(embed_dim, 1),
             nn.Sigmoid()
         )
@@ -99,9 +102,9 @@ class MoE(nn.Module):
     def __init__(
         self,
         hidden_size: int = 768,
-        num_experts: int = 64,
+        num_experts: int = 8,
         expert_capacity: int = 1,               # currently unused → remove or implement
-        top_k: int = 8,                         # renamed from num_experts_per_token
+        top_k: int = 2,                         # renamed from num_experts_per_token
         z_loss_coef: float = 0.1,
         load_balance_coef: float = 0.1,
         num_classes: int = 191
@@ -115,7 +118,16 @@ class MoE(nn.Module):
         self.load_balance_coef = load_balance_coef
         self.num_classes = num_classes
         # Routing head
-        self.router = nn.Linear(hidden_size, num_experts)
+        self.router = nn.ModuleList([
+            nn.Sequential(
+                nn.Linear(hidden_size, hidden_size),
+                nn.LayerNorm(hidden_size),
+                nn.ReLU(),
+                nn.Dropout(0.2),
+                nn.Linear(hidden_size,num_experts)
+            )
+        ])
+                
 
         # Expert sub‑networks
         self.experts = nn.ModuleList([
@@ -124,14 +136,20 @@ class MoE(nn.Module):
                 nn.LayerNorm(hidden_size),
                 nn.ReLU(inplace=True),
                 nn.Dropout(0.2),
-                nn.Linear(hidden_size, num_classes)
+                nn.Linear(hidden_size, hidden_size//2),
+                nn.LayerNorm(hidden_size//2),
+                nn.ReLU(inplace=True),
+                nn.Dropout(0.2),
+                nn.Linear(hidden_size//2, num_classes)
             )
             for _ in range(num_experts)
         ])
         # get_expert_usage(self.num_experts)
-    def forward(self, trunk_out):
+    def forward(self, trunk_out1):
         # shape: [B, D]
-
+        # print(trunk_out1.shape)
+        B, num_input, len_embed = trunk_out1.size()
+        trunk_out = trunk_out1.view(-1, len_embed)
         # 2) Routing probabilities
         logits = self.router(trunk_out)           # [B, num_experts]
         probs = F.softmax(logits, dim=-1)         # [B, num_experts]
@@ -174,8 +192,8 @@ class MoE(nn.Module):
             output_selected = output_selected * weight_selected
             final_logits[selected_idx] += output_selected
             
-
-
+        final_logits = final_logits.view(B, num_input, self.num_classes)  # [B, num_input, C]
+        final_logits = final_logits.mean(dim=1)
         return final_logits, aux_loss
 
 
@@ -190,16 +208,16 @@ class Q_bottleneck(nn.Module):
         self.image_encoder = Image_encoder()
         self.Q1 = nn.Parameter(torch.randn(32,768))
         self.Q2 = nn.Parameter(torch.randn(32,768))
-        self.Q3 = nn.Parameter(torch.randn(1,768))
+        self.Q3 = nn.Parameter(torch.randn(2,768))
         self.num_layer = 6
         self.cross_attention_layers1 = nn.ModuleList(
-            [CrossAttentionBlock(embed_dim= 768 , num_heads = 8, ff_dim=768*2) for _ in range(self.num_layer)]
+            [CrossAttentionBlock(embed_dim= 768 , num_heads = 8, ff_dim=768*4) for _ in range(self.num_layer)]
         )
         self.cross_attention_layers2 = nn.ModuleList(
-            [CrossAttentionBlock(embed_dim= 768 , num_heads = 8, ff_dim=768*2) for _ in range(self.num_layer)]
+            [CrossAttentionBlock(embed_dim= 768 , num_heads = 8, ff_dim=768*4) for _ in range(self.num_layer)]
         )
         self.cross_attention_layers3 = nn.ModuleList(
-            [CrossAttentionBlock(embed_dim= 768 , num_heads = 8, ff_dim=768*2) for _ in range(self.num_layer)]
+            [CrossAttentionBlock(embed_dim= 768 , num_heads = 8, ff_dim=768*4) for _ in range(self.num_layer)]
         )
         self.gate_way = Gate_way()
         self.fusion = nn.Sequential(
@@ -225,8 +243,8 @@ class Q_bottleneck(nn.Module):
             Q2_tokens = block(query=Q2_tokens, key = txt, value =txt)
         fuse = self.gate_way(Q1_tokens, Q2_tokens)
         for block in self.cross_attention_layers3:
-            final_fuse = block(query = final_fuse, key = fuse, value = fuse)  # B x 1 x 768
-        final_fuse = final_fuse.mean(dim=1)
+            final_fuse = block(query = final_fuse, key = fuse, value = fuse)  # B x 2 x 768
+        # final_fuse = final_fuse.mean(dim=1)
         # final = self.fusion(final_fuse)
         logit_final, aux_loss = self.moe(final_fuse)
         return logit_final, aux_loss,  Q1_tokens.mean(dim=1), Q2_tokens.mean(dim=1)
