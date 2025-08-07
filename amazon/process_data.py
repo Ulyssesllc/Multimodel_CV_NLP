@@ -41,7 +41,9 @@ class MyData(Dataset):
         item = self.dataset.iloc[idx]
         # Load image using img_path column (relative to img_file)
         # Extract filename to match files in img_file directory
-        img_filename = os.path.basename(item["img_path"])
+        # Normalize Windows-style backslashes and extract filename
+        raw_path = item["img_path"].replace('\\', '/')
+        img_filename = os.path.basename(raw_path)
         img_path = os.path.join(self.img_file, img_filename)
         image = Image.open(img_path).convert("RGB")
         image = self.transform(image)
