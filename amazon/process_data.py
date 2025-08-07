@@ -29,9 +29,20 @@ class MyData(Dataset):
         self.max_length = 512
         self.tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
         # Read CSV with latin1 encoding to handle special characters
-        self.dataset = pd.read_csv(self.csv_file, sep=";", encoding="latin1")
-        # self.max_length
-        # self.dataset = pd.read_csv(self.csv_file, encoding="latin1")
+        df = pd.read_csv(self.csv_file, sep=";", encoding="latin1")
+        # Normalize img_path and extract filenames
+        df["img_filename"] = (
+            df["img_path"]
+            .str.replace("\\", "/", regex=False)
+            .apply(lambda p: p.split("/")[-1])
+        )
+        # Filter rows where image file exists
+        df = df[
+            df["img_filename"].apply(
+                lambda fn: os.path.isfile(os.path.join(self.img_file, fn))
+            )
+        ].reset_index(drop=True)
+        self.dataset = df
 
     def __len__(self):
         return len(self.dataset)
@@ -40,10 +51,8 @@ class MyData(Dataset):
         # Get row data
         item = self.dataset.iloc[idx]
         # Load image using img_path column (relative to img_file)
-        # Extract filename to match files in img_file directory
-        # Normalize Windows-style backslashes and extract filename
-        raw_path = item["img_path"].replace("\\", "/")
-        img_filename = raw_path.split("/")[-1]
+        # Use precomputed filename
+        img_filename = item["img_filename"]
         img_path = os.path.join(self.img_file, img_filename)
         image = Image.open(img_path).convert("RGB")
         image = self.transform(image)
