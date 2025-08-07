@@ -27,14 +27,15 @@ class TextEncoder(nn.Module):
 
 
 class FusionModule(nn.Module):
-    def __init__(self):
+    def __init__(self, num_classes=10):
         super(FusionModule, self).__init__()
         self.img_encoder = ImageEncoder()
         self.text_encoder = TextEncoder()
         self.text_fc = nn.Linear(768, 512)  # text_vector to size 512
         self.fusion = nn.Linear(1024, 512)
         self.fc_layer = nn.Linear(512, 512)
-        self.final_fc = nn.Linear(512, 10)
+        # final classification layer with dynamic output size
+        self.final_fc = nn.Linear(512, num_classes)
 
     def forward(self, img, input_ids, attention_mask):
         img_feat = self.img_encoder(img)

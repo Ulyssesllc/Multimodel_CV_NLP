@@ -67,7 +67,8 @@ class MyData(Dataset):
             return_tensors="pt",
         )
         # Use numeric label_id column
-        label = torch.tensor(int(item["label_id"]))
+        # Convert to 0-based class index
+        label = torch.tensor(int(item["label_id"]) - 1)
         return {
             "image": image,
             "input_ids": tokens["input_ids"].squeeze(0),
