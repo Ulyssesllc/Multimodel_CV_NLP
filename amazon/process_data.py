@@ -42,8 +42,8 @@ class MyData(Dataset):
         # Load image using img_path column (relative to img_file)
         # Extract filename to match files in img_file directory
         # Normalize Windows-style backslashes and extract filename
-        raw_path = item["img_path"].replace('\\', '/')
-        img_filename = os.path.basename(raw_path)
+        raw_path = item["img_path"].replace("\\", "/")
+        img_filename = raw_path.split("/")[-1]
         img_path = os.path.join(self.img_file, img_filename)
         image = Image.open(img_path).convert("RGB")
         image = self.transform(image)
