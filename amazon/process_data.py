@@ -32,19 +32,14 @@ class MyData(Dataset):
         df = pd.read_csv(self.csv_file, sep=";", encoding="latin1")
         # Drop rows without img_path to avoid NaN values
         df = df.dropna(subset=["img_path"])
-        # Extract filename from img_path regardless of slashes/backslashes
+        # Extract filename from img_path and keep only valid image files
         df["img_filename"] = df["img_path"].apply(lambda p: os.path.basename(str(p)))
-        # Remove entries where image file is not found
         df = df[
             df["img_filename"].apply(
                 lambda fn: os.path.isfile(os.path.join(self.img_file, fn))
             )
         ].reset_index(drop=True)
-        # Filter out rows where image file is missing
-        valid_mask = df["img_filename"].apply(
-            lambda fn: os.path.isfile(os.path.join(self.img_file, fn))
-        )
-        self.dataset = df[valid_mask].reset_index(drop=True)
+        self.dataset = df
 
     def __len__(self):
         return len(self.dataset)
@@ -56,7 +51,12 @@ class MyData(Dataset):
         # Use precomputed filename
         img_filename = item["img_filename"]
         img_path = os.path.join(self.img_file, img_filename)
-        image = Image.open(img_path).convert("RGB")
+        # Fallback to blank image if file missing
+        try:
+            image = Image.open(img_path).convert("RGB")
+        except (FileNotFoundError, OSError):
+            # create a black image
+            image = Image.new("RGB", (224, 224), (0, 0, 0))
         image = self.transform(image)
         # Tokenize text description
         text = str(item["description"])
