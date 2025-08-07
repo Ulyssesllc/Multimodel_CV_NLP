@@ -1,3 +1,4 @@
+import os
 from MLP import FusionModule
 import torch
 import torch.optim as optim
@@ -7,9 +8,9 @@ from torch.utils.data import random_split
 
 from torch.utils.data import DataLoader
 
-# def __init__(self, csv_file, img_file):
-csv_file = "training_data.csv"
-img_dir = "amazon_dataset"
+base_dir = os.path.dirname(__file__)
+csv_file = os.path.join(base_dir, "training_data.csv")
+img_dir = os.path.join(base_dir, "amazon_dataset")
 dataset = MyData(csv_file, img_dir)
 
 
