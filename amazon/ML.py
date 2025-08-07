@@ -10,8 +10,12 @@ from torch.utils.data import DataLoader
 
 base_dir = os.path.dirname(__file__)
 csv_file = os.path.join(base_dir, "training_data.csv")
-# Images are stored in root-level amazon_dataset, so go one level up
-img_dir = os.path.abspath(os.path.join(base_dir, os.pardir, "amazon_dataset"))
+# Attempt to find image directory under amazon/, else fallback to root folder
+candidate = os.path.join(base_dir, "amazon_dataset")
+if os.path.isdir(candidate):
+    img_dir = candidate
+else:
+    img_dir = os.path.join(os.path.dirname(base_dir), "amazon_dataset")
 dataset = MyData(csv_file, img_dir)
 
 
