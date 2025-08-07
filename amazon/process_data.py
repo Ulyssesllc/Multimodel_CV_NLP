@@ -32,18 +32,19 @@ class MyData(Dataset):
         df = pd.read_csv(self.csv_file, sep=";", encoding="latin1")
         # Drop rows without img_path to avoid NaN values
         df = df.dropna(subset=["img_path"])
-        # Normalize img_path and extract filename using vectorized string methods
-        df["img_filename"] = (
-            df["img_path"]
-            .astype(str)
-            # Replace backslashes with forward slashes
-            .str.replace("\\\\", "/", regex=True)
-            # Split on slash and take basename
-            .str.rsplit("/", n=1)
-            .str[-1]
+        # Extract filename from img_path regardless of slashes/backslashes
+        df["img_filename"] = df["img_path"].apply(lambda p: os.path.basename(str(p)))
+        # Remove entries where image file is not found
+        df = df[
+            df["img_filename"].apply(
+                lambda fn: os.path.isfile(os.path.join(self.img_file, fn))
+            )
+        ].reset_index(drop=True)
+        # Filter out rows where image file is missing
+        valid_mask = df["img_filename"].apply(
+            lambda fn: os.path.isfile(os.path.join(self.img_file, fn))
         )
-        # Use full dataset; skip filtering to avoid empty dataset
-        self.dataset = df
+        self.dataset = df[valid_mask].reset_index(drop=True)
 
     def __len__(self):
         return len(self.dataset)
