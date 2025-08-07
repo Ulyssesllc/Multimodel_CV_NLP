@@ -30,11 +30,16 @@ class MyData(Dataset):
         self.tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
         # Read CSV with latin1 encoding to handle special characters
         df = pd.read_csv(self.csv_file, sep=";", encoding="latin1")
+        # Drop rows without img_path to avoid NaN values
+        df = df.dropna(subset=["img_path"])
         # Normalize img_path and extract filenames
+        # Normalize img_path and extract filename using vectorized string methods
         df["img_filename"] = (
             df["img_path"]
-            .str.replace("\\", "/", regex=False)
-            .apply(lambda p: p.split("/")[-1])
+            .astype(str)
+            .str.replace("\\\\", "/", regex=False)
+            .str.split("/")
+            .str[-1]
         )
         # Filter rows where image file exists
         df = df[
