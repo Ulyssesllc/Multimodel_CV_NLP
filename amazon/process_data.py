@@ -28,7 +28,8 @@ class MyData(Dataset):
         }
         self.max_length = 512
         self.tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-        self.dataset = pd.read_csv(self.csv_file, sep=";")
+        # Read CSV with latin1 encoding to handle special characters
+        self.dataset = pd.read_csv(self.csv_file, sep=";", encoding="latin1")
         # self.max_length
         # self.dataset = pd.read_csv(self.csv_file, encoding="latin1")
 
