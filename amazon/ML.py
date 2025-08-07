@@ -2,11 +2,11 @@ from MLP import FusionModule
 import torch
 import torch.optim as optim
 import torch.nn as nn
-from process_data import MyData 
+from process_data import MyData
 from torch.utils.data import random_split
 
-from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
+
 # def __init__(self, csv_file, img_file):
 csv_file = "training_data.csv"
 img_dir = "amazon_dataset"
@@ -17,30 +17,38 @@ train_size = int(0.8 * len(dataset))
 test_size = len(dataset) - train_size
 train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
 
-train_data = DataLoader(train_dataset, batch_size= 8, shuffle= True)
-test_data = DataLoader(test_dataset, batch_size = 8, shuffle= False )
+train_data = DataLoader(train_dataset, batch_size=8, shuffle=True)
+test_data = DataLoader(test_dataset, batch_size=8, shuffle=False)
 
-feature_extraction = FusionModule()
+model = FusionModule()
 
-def train(feature_extraction, dataloader, epochs = 15, lr = 0.001, model = None):
+
+def train(model, dataloader, epochs=15, lr=0.001):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    feature_extraction.to(device)
+    model.to(device)
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr = lr)
+    optimizer = optim.Adam(model.parameters(), lr=lr)
     for epoch in range(epochs):
-        feature_extraction.train()
-        total_loss = 0 
+        model.train()
+        total_loss = 0
         for batch in dataloader:
-            img = batch['image'].to(device)
-            text = batch['text'].to(device)
-            label = batch['label'].to(device)
+            img = batch["image"].to(device)
+            input_ids = batch["input_ids"].to(device)
+            attention_mask = batch["attention_mask"].to(device)
+            label = batch["label"].to(device)
             optimizer.zero_grad()
-            output = feature_extraction(img, text)   # output là feature vector có số chiều là 512
-            output = model(output)
+            output = model(img, input_ids, attention_mask)
             loss = criterion(output, label)
             loss.backward()
             optimizer.step()
             total_loss += loss.item()
-            
-        print(f"Epoch {epoch+1} / {epochs}, Loss:{total_loss/ len(dataloader)}")
-    
+
+        print(f"Epoch {epoch + 1} / {epochs}, Loss:{total_loss / len(dataloader)}")
+    return model
+
+
+if __name__ == "__main__":
+    # Run training workflow
+    trained_model = train(model, train_data)
+    # Optionally, save the trained model
+    torch.save(trained_model.state_dict(), "fusion_model.pth")

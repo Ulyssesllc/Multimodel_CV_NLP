@@ -28,7 +28,7 @@ class MyData(Dataset):
         }
         self.max_length = 512
         self.tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-        self.dataset = pd.read_csv(self.csv_file)
+        self.dataset = pd.read_csv(self.csv_file, sep=";")
         # self.max_length
         # self.dataset = pd.read_csv(self.csv_file, encoding="latin1")
 
@@ -36,28 +36,15 @@ class MyData(Dataset):
         return len(self.dataset)
 
     def __getitem__(self, idx):
+        # Get row data
         item = self.dataset.iloc[idx]
-        label_text = item["genre"].title()
-        #######  IMAGE ######
-        img_path = os.path.join(self.img_file, label_text, str(item["movie_id"]))
-        if not os.path.exists(img_path):
-            # print(f"File not found {img_path}")
-            label_dir = os.path.join(self.img_file, label_text)
-            images = (
-                [
-                    f
-                    for f in os.listdir(label_dir)
-                    if f.lower().endswith((".png", ".jpg", ".jpeg"))
-                ]
-                if os.path.isdir(label_dir)
-                else []
-            )
-            img_path = os.path.join(label_dir, images[0]) if images else None
-        # print(img_path)
+        # Load image using img_path column (relative to img_file)
+        # Extract filename to match files in img_file directory
+        img_filename = os.path.basename(item["img_path"])
+        img_path = os.path.join(self.img_file, img_filename)
         image = Image.open(img_path).convert("RGB")
         image = self.transform(image)
-        ####### TEXT ########
-
+        # Tokenize text description
         text = str(item["description"])
         tokens = self.tokenizer(
             text,
@@ -66,7 +53,8 @@ class MyData(Dataset):
             max_length=self.max_length,
             return_tensors="pt",
         )
-        label = torch.tensor(self.label_map[label_text])
+        # Use numeric label_id column
+        label = torch.tensor(int(item["label_id"]))
         return {
             "image": image,
             "input_ids": tokens["input_ids"].squeeze(0),

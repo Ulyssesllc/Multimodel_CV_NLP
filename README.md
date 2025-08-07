@@ -10,22 +10,24 @@ This repo contains two separate experiments for multimodal vision-and-language m
      - `ML.py`: Training loop (split train/test, DataLoader, optimizer, epochs).
    
    **Detailed Workflow:**
-     1. Navigate to the `amazon/` folder:
+     1. Change into the `amazon/` directory:
         ```bash
         cd amazon
         ```
-     2. Install dependencies:
+     2. Install required packages:
         ```bash
         pip install torch torchvision transformers scikit-learn pandas
         ```
-     3. Ensure data files are present:
-        - `training_data.csv` (metadata)
-        - `amazon_dataset/` folder with product images
-     4. Run training script:
+     3. Verify that the following data is available:
+        - `training_data.csv` (product metadata and labels)
+        - `amazon_dataset/` directory containing image files
+     4. Run the training script:
         ```bash
         python ML.py
         ```
-     5. Check console output for loss and accuracy over epochs.
+        - This will train the `FusionModule` on the dataset and print loss per epoch.
+        - The final model weights are saved to `fusion_model.pth` in the same folder.
+     5. (Optional) To use the trained model for inference or fine-tuning, load `fusion_model.pth` in your script.
 
 2. **GLAMI-1M Experiment (in `GLAMI-1M/` directory)**
    - Contains exploratory scripts using Vision Transformers, contrastive learning, and attention-based fusion on a larger dataset.
