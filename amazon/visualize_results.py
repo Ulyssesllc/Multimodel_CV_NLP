@@ -31,10 +31,12 @@ def main(num_samples=5, batch_size=1, model_path="fusion_model_best.pth"):
     # DataLoader
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
-    # Load model
+    # Load model checkpoint and infer number of classes
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = FusionModule(num_classes=len(dataset.label_map))
-    model.load_state_dict(torch.load(model_path, map_location=device))
+    state_dict = torch.load(model_path, map_location=device)
+    num_classes_checkpoint = state_dict["final_fc.weight"].shape[0]
+    model = FusionModule(num_classes=num_classes_checkpoint)
+    model.load_state_dict(state_dict)
     model.to(device)
     model.eval()
 
