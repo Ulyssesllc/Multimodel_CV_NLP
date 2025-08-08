@@ -3,6 +3,7 @@ import torch
 from torchvision import transforms
 from torch.utils.data import Dataset
 from PIL import Image
+import re
 import pandas as pd
 from transformers import BertTokenizer
 
@@ -32,8 +33,10 @@ class MyData(Dataset):
         df = pd.read_csv(self.csv_file, sep=";", encoding="latin1")
         # Drop rows without img_path to avoid NaN values
         df = df.dropna(subset=["img_path"])
-        # Extract filename from img_path and keep only valid image files
-        df["img_filename"] = df["img_path"].apply(lambda p: os.path.basename(str(p)))
+        # Extract filename from img_path using regex to handle both slashes
+        df["img_filename"] = (
+            df["img_path"].astype(str).apply(lambda p: re.split(r"[\\\\/]", p)[-1])
+        )
         df = df[
             df["img_filename"].apply(
                 lambda fn: os.path.isfile(os.path.join(self.img_file, fn))
