@@ -42,7 +42,10 @@ def main(num_samples=5, batch_size=1, model_path="fusion_model_best.pth"):
 
     # Plot samples
     num_cols = num_samples
-    fig, axes = plt.subplots(1, num_cols, figsize=(4 * num_cols, 4))
+    # create larger figure with space for captions
+    fig, axes = plt.subplots(1, num_cols, figsize=(4 * num_cols, 6))
+    # adjust bottom margin for captions
+    fig.subplots_adjust(bottom=0.3)
     for i, batch in enumerate(loader):
         if i >= num_samples:
             break
@@ -54,8 +57,8 @@ def main(num_samples=5, batch_size=1, model_path="fusion_model_best.pth"):
         desc = batch.get("description")
         if isinstance(desc, (list, tuple)):
             desc = desc[0]
-        # truncate description if too long
-        desc_display = (desc[:50] + "...") if len(desc) > 50 else desc
+        # use full description text for caption
+        desc_display = desc
 
         with torch.no_grad():
             output = model(img, input_ids, attention_mask)
@@ -63,11 +66,11 @@ def main(num_samples=5, batch_size=1, model_path="fusion_model_best.pth"):
 
         ax = axes[i] if num_cols > 1 else axes
         imshow(batch["image"].squeeze(0), ax)
-        # display description, ground-truth and prediction
+        # display full description and labels below image
         gt_name = label_map_inv.get(label, str(label))
         pred_name = label_map_inv.get(pred, str(pred))
-        full_title = f"Desc: {desc_display}\nGT: {gt_name} | Pred: {pred_name}"
-        ax.set_title(full_title, fontsize=8)
+        full_caption = f"Desc: {desc_display}\nGT: {gt_name} | Pred: {pred_name}"
+        ax.set_xlabel(full_caption, fontsize=8)
 
     plt.tight_layout()
     # Save visualization to file
