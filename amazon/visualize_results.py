@@ -50,6 +50,12 @@ def main(num_samples=5, batch_size=1, model_path="fusion_model_best.pth"):
         input_ids = batch["input_ids"].to(device)
         attention_mask = batch["attention_mask"].to(device)
         label = batch["label"].item()
+        # get original description text
+        desc = batch.get("description")
+        if isinstance(desc, (list, tuple)):
+            desc = desc[0]
+        # truncate description if too long
+        desc_display = (desc[:50] + "...") if len(desc) > 50 else desc
 
         with torch.no_grad():
             output = model(img, input_ids, attention_mask)
@@ -57,13 +63,17 @@ def main(num_samples=5, batch_size=1, model_path="fusion_model_best.pth"):
 
         ax = axes[i] if num_cols > 1 else axes
         imshow(batch["image"].squeeze(0), ax)
-        # Replace direct indexing with .get() and fallback to numeric
+        # display description, ground-truth and prediction
         gt_name = label_map_inv.get(label, str(label))
         pred_name = label_map_inv.get(pred, str(pred))
-        title = f"GT: {gt_name}\nPred: {pred_name}"
-        ax.set_title(title)
+        full_title = f"Desc: {desc_display}\nGT: {gt_name} | Pred: {pred_name}"
+        ax.set_title(full_title, fontsize=8)
 
     plt.tight_layout()
+    # Save visualization to file
+    save_path = os.path.join(base_dir, "predictions.png")
+    plt.savefig(save_path)
+    print(f"Saved visualization to {save_path}")
     plt.show()
 
 

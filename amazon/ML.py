@@ -18,8 +18,8 @@ if os.path.isdir(candidate):
 else:
     img_dir = os.path.join(os.path.dirname(base_dir), "amazon_dataset")
 dataset = MyData(csv_file, img_dir)
-
-
+# determine number of classes dynamically
+num_classes = len(dataset.label_map)
 train_size = int(0.8 * len(dataset))
 test_size = len(dataset) - train_size
 train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
@@ -27,7 +27,8 @@ train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
 train_data = DataLoader(train_dataset, batch_size=8, shuffle=True)
 test_data = DataLoader(test_dataset, batch_size=8, shuffle=False)
 
-model = FusionModule()
+# initialize model with correct output size
+model = FusionModule(num_classes=num_classes)
 
 
 def train(model, train_loader, val_loader, epochs=50, lr=0.001, patience=5):

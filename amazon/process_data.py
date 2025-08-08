@@ -21,12 +21,8 @@ class MyData(Dataset):
                 ),
             ]
         )
-        self.label_map = {
-            "Action": 0,
-            "Comedy": 1,
-            "Horror": 2,
-            "Romance": 3,
-        }
+        # build label map dynamically from CSV label column
+        # after filtering valid image files
         self.max_length = 512
         self.tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
         # Read CSV with latin1 encoding to handle special characters
@@ -42,6 +38,11 @@ class MyData(Dataset):
                 lambda fn: os.path.isfile(os.path.join(self.img_file, fn))
             )
         ].reset_index(drop=True)
+        # dynamic mapping: unique label texts to indices
+        unique_labels = sorted(df["label"].unique())
+        self.label_map = {label: idx for idx, label in enumerate(unique_labels)}
+        # add numeric label index column
+        df["label_index"] = df["label"].map(self.label_map)
         self.dataset = df
 
     def __len__(self):
@@ -71,11 +72,13 @@ class MyData(Dataset):
             return_tensors="pt",
         )
         # Use numeric label_id column
-        # Convert to 0-based class index
-        label = torch.tensor(int(item["label_id"]) - 1)
+        # numeric label index from dynamic map
+        label = torch.tensor(int(item["label_index"]))
         return {
             "image": image,
             "input_ids": tokens["input_ids"].squeeze(0),
             "attention_mask": tokens["attention_mask"].squeeze(0),
             "label": label,
+            # include original description text for visualization
+            "description": text,
         }
