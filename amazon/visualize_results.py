@@ -57,7 +57,10 @@ def main(num_samples=5, batch_size=1, model_path="fusion_model_best.pth"):
 
         ax = axes[i] if num_cols > 1 else axes
         imshow(batch["image"].squeeze(0), ax)
-        title = f"GT: {label_map_inv[label]}\nPred: {label_map_inv[pred]}"
+        # Replace direct indexing with .get() and fallback to numeric
+        gt_name = label_map_inv.get(label, str(label))
+        pred_name = label_map_inv.get(pred, str(pred))
+        title = f"GT: {gt_name}\nPred: {pred_name}"
         ax.set_title(title)
 
     plt.tight_layout()
