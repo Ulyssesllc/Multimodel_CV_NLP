@@ -97,6 +97,21 @@ Utility flags:
 
 Validation logic removes rows whose `img_path` does not exist under `images/`.
 
+Download & prepare directly from an official (e.g. test-only) ZIP subset:
+```bash
+cd GLAMI-1M
+python prepare_glami.py \
+   --meta GLAMI-1M-dataset--test-only.csv \
+   --images images \
+   --download-url https://huggingface.co/datasets/glami/glami-1m/resolve/main/GLAMI-1M-dataset--test-only.zip \
+   --skip-split \
+   --summary summary_test_only.json
+```
+Notes:
+- Provide the correct CSV inside (or accompanying) the downloaded ZIP as --meta.
+- Use `--skip-split` because a test-only subset should not be split again.
+- Add `--force-download` to re-download if the zip already exists.
+
 After preparation run training:
 ```bash
 python train.py --model Q_cons_fusion
