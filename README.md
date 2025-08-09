@@ -21,18 +21,23 @@ This repo contains two separate experiments for multimodal vision-and-language m
      3. Verify that the following data is available:
         - `training_data.csv` (product metadata and labels)
         - `amazon_dataset/` directory containing image files
-     4. Run the training script:
+     4. Run training (advanced pipeline now with config + metrics + mixed precision):
         ```bash
         python ML.py
         ```
-        - This will train the `FusionModule` on the dataset and print loss per epoch.
-        - The final model weights are saved to `fusion_model.pth` in the same folder.
-     5. (Optional) To use the trained model for inference or fine-tuning, load `fusion_model.pth` in your script.
-     6. To visualize model predictions on sample images:
+        - Features: dynamic class mapping, seeding, early stopping, LR scheduler (cosine), AMP, gradient clipping, accuracy metrics, checkpointing (`checkpoint_best.pth`), history log `training_history.json`.
+        - Best model weights saved: `fusion_model_best.pth`.
+     5. Resume training from checkpoint (optional):
+        - Edit `CONFIG.resume_checkpoint` in `config.py` to point to `checkpoint_best.pth` or another checkpoint, then rerun `python ML.py`.
+     6. Adjust hyperparameters:
+        - Edit `amazon/config.py` (batch_size, epochs, lr, scheduler, dropout, freezing, backbone choice, mixed precision, etc.).
+     7. Visualize & export VLM-style predictions:
         ```bash
-        python visualize_results.py
+        python visualize_results.py --model-path fusion_model_best.pth --num-samples 6 --top-k 5
         ```
-        This will display a plot of sample images annotated with ground-truth and predicted labels. Ensure your saved model file (e.g. `fusion_model_best.pth` or `fusion_model.pth`) is in this directory.
+        - Outputs:
+          - `amazon/vlm_outputs/predictions_grid.png`
+          - `amazon/vlm_outputs/predictions.json` (Top-K probs, descriptions, GT/Pred)
 
 2. **GLAMI-1M Experiment (in `GLAMI-1M/` directory)**
    - Contains exploratory scripts using Vision Transformers, contrastive learning, and attention-based fusion on a larger dataset.
