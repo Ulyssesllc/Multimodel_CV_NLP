@@ -40,9 +40,75 @@ This repo contains two separate experiments for multimodal vision-and-language m
           - `amazon/vlm_outputs/predictions.json` (Top-K probs, descriptions, GT/Pred)
 
 2. **GLAMI-1M Experiment (in `GLAMI-1M/` directory)**
-   - Contains exploratory scripts using Vision Transformers, contrastive learning, and attention-based fusion on a larger dataset.
-   - Scripts included but not part of the core Amazon workflow:
-     - `Contrastive.py`, `attention_model.py`, `train.py`, `MoE.py`, `Q_former.py`, `Q_bottleneck.py`, `single.py`, `solve_problem.py`.
+   - Upgraded training workflow includes:
+     - Central config: `GLAMI-1M/config.py` (batch_size, epochs, lr, scheduler, patience, AMP, grad clip, workers)
+     - Refactored `train.py` with: seeding, early stopping on test accuracy, cosine/plateau scheduler, AMP, gradient clipping, JSON history logging, best checkpoint saving (`checkpoints/best_model.pth`).
+     - Logs stored in `glami_logs/` (train_log.txt, history.json, attention_log.txt, attention_history.json).
+   - Run contrastive fusion model:
+     ```bash
+     cd GLAMI-1M
+     python train.py --model Q_cons_fusion
+     ```
+   - Run simple MLP fusion baseline:
+     ```bash
+     python train.py --model MLP_fusion
+     ```
+   - Adjust hyperparameters by editing `GLAMI-1M/config.py`.
+   - Resume training: set `resume` path in config (future extension for loading full optimizer/scaler state).
+
+### GLAMI-1M Dataset Preparation
+
+Expected folder structure:
+```
+GLAMI-1M/
+  train.py
+  config.py
+  prepare_glami.py
+  Contrastive.py
+  MLP.py
+  ...
+  images/               # all image files
+  GLAMI-1M-train.csv    # stratified train split
+  GLAMI-1M-test.csv     # stratified test split
+```
+
+Minimum CSV schema (both train & test):
+```
+img_path,category_name
+000001.jpg,Dresses
+000002.jpg,Shoes
+...
+```
+
+Steps to build splits from a master metadata file `all_meta.csv`:
+```bash
+cd GLAMI-1M
+python prepare_glami.py --meta all_meta.csv --images images --test-size 0.1 --seed 42 --summary summary.json
+```
+Outputs:
+- GLAMI-1M-train.csv
+- GLAMI-1M-test.csv
+- summary.json (optional stats: counts, classes, missing files)
+
+Utility flags:
+- `--lowercase`: normalize filenames to lowercase.
+- `--test-size 0.1`: set test ratio.
+- `--seed`: reproducible split.
+
+Validation logic removes rows whose `img_path` does not exist under `images/`.
+
+After preparation run training:
+```bash
+python train.py --model Q_cons_fusion
+```
+
+### Data Sources Notes
+- `training_data.csv` (Amazon) contains product image paths, textual descriptions, label text and numeric IDs.
+- `amazon_dataset/` stores the corresponding image assets referenced by `training_data.csv`.
+- `GLAMI-1M-train.csv` / `GLAMI-1M-test.csv` (generated) contain fashion product metadata for GLAMI-1M with at least `img_path` and `category_name`.
+- All class indices are built dynamically at runtime (`label_map`) to avoid hardcoding.
+
+Ensure you have rights / licenses for redistributed images. Large-scale runs should consider converting CSV to Parquet for faster loading.
 
 ---
 
