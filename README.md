@@ -31,7 +31,7 @@ This repo contains two separate experiments for multimodal vision-and-language m
         - Edit `CONFIG.resume_checkpoint` in `config.py` to point to `checkpoint_best.pth` or another checkpoint, then rerun `python ML.py`.
      6. Adjust hyperparameters:
         - Edit `amazon/config.py` (batch_size, epochs, lr, scheduler, dropout, freezing, backbone choice, mixed precision, etc.).
-     7. Visualize & export VLM-style predictions:
+   7. Visualize & export VLM-style predictions:
         ```bash
         python visualize_results.py --model-path fusion_model_best.pth --num-samples 6 --top-k 5
         ```
@@ -50,7 +50,22 @@ This repo contains two separate experiments for multimodal vision-and-language m
                python visualize_results.py --model-path fusion_model_best.pth --num-samples 5 --top-k 5 --composite --layout horizontal
                ```
                - Extra output: `amazon/vlm_outputs/predictions_composite.png`
-               - Panel content: Sample index, GT (name+index), Pred (name+index), Top-K list, Description.
+            - Panel content: Sample index, GT (name+index), Pred (name+index), Top-K list, Description.
+
+       Advanced visualization flags (Amazon):
+       - `--temperature 1.5` : apply temperature scaling to logits before softmax (display only).
+       - `--max-desc-chars 300` : truncate description before wrapping (avoid overlong panels).
+       - `--embed-json` : append a panel containing the JSON summary directly into the composite PNG.
+       - `--json-wrap 110` : approximate character wrap width when embedding JSON.
+       - `--no-json-file` : suppress writing the separate `predictions.json` (when embedding only).
+       - `--no-grid` : skip the matplotlib grid (faster, composite only).
+       - `--layout horizontal|vertical` : control composite stacking direction.
+       Example combining options:
+       ```bash
+       python visualize_results.py --model-path fusion_model_best.pth \
+          --num-samples 8 --top-k 5 --composite --no-grid \
+          --embed-json --temperature 1.2 --max-desc-chars 250
+       ```
 
 2. **GLAMI-1M Experiment (in `GLAMI-1M/` directory)**
    - Upgraded training workflow includes:
@@ -153,16 +168,28 @@ python visualize_glami.py --checkpoint checkpoints/best_model.pth --model-type Q
 Outputs (default `glami_vis/`):
 - `glami_predictions_grid.png` (if not using `--no-grid`)
 - `glami_predictions_composite.png` (when `--composite`)
-- `glami_predictions.json`
+- `glami_predictions.json` (unless suppressed with `--no-json-file`)
 
 Panel content mirrors Amazon: Sample id, GT (name+index), Pred (name+index), Top-K probability list, short description placeholder (currently category-based; extendable to richer metadata).
 
 Flags summary:
-- `--top-k`: number of probabilities to list.
-- `--composite`: enable single-file stacked panels.
-- `--layout horizontal|vertical`: composite arrangement.
-- `--no-grid`: suppress matplotlib multi-axes grid.
-- `--no-show`: headless mode.
+- `--top-k` : number of probabilities to list.
+- `--composite` : enable single-file stacked panels.
+- `--layout horizontal|vertical` : composite arrangement.
+- `--no-grid` : suppress matplotlib multi-axes grid.
+- `--no-show` : headless mode.
+- `--temperature` : temperature scaling (display only).
+- `--max-desc-chars` : truncate description placeholder.
+- `--embed-json` : append JSON summary as panel within composite.
+- `--json-wrap` : wrap width for embedded JSON text.
+- `--no-json-file` : skip separate JSON output file.
+
+Example with embedded JSON (GLAMI):
+```bash
+python visualize_glami.py --checkpoint checkpoints/best_model.pth \
+   --model-type Q_cons_fusion --num-samples 6 --top-k 5 --composite \
+   --no-grid --embed-json --temperature 1.3
+```
 
 If you retrain with different class counts the script adjusts final linear layer shape when loading state dict (non-strict load for safety).
 

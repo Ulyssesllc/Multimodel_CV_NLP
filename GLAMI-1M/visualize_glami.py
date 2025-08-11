@@ -61,6 +61,35 @@ def build_arg_parser():
     p.add_argument(
         "--no-show", action="store_true", help="Headless mode (don't open windows)"
     )
+    # parity options with amazon visualize
+    p.add_argument(
+        "--temperature",
+        type=float,
+        default=1.0,
+        help="Temperature scaling for softmax (display only)",
+    )
+    p.add_argument(
+        "--max-desc-chars",
+        type=int,
+        default=200,
+        help="Truncate description text before wrapping",
+    )
+    p.add_argument(
+        "--embed-json",
+        action="store_true",
+        help="Embed JSON summary panel into composite image",
+    )
+    p.add_argument(
+        "--json-wrap",
+        type=int,
+        default=110,
+        help="Approx char wrap width for embedded JSON",
+    )
+    p.add_argument(
+        "--no-json-file",
+        action="store_true",
+        help="Do not emit separate JSON file when set",
+    )
     return p
 
 
@@ -164,7 +193,10 @@ def visualize(args):
                 logits, img_feat, text_feat = model(img, input_ids, attention_mask)
             else:
                 logits = model(img, input_ids, attention_mask)
-        probs = F.softmax(logits, dim=1).squeeze(0).cpu()
+            temperature = (
+                args.temperature if args.temperature and args.temperature > 0 else 1.0
+            )
+            probs = F.softmax(logits / temperature, dim=1).squeeze(0).cpu()
         pred_idx = int(torch.argmax(probs).item())
         k = min(args.top_k, probs.shape[0])
         topk_vals, topk_indices = torch.topk(probs, k)
@@ -180,6 +212,8 @@ def visualize(args):
         gt_name = label_map_inv.get(label, str(label))
         pred_name = label_map_inv.get(pred_idx, str(pred_idx))
         desc = f"Category: {gt_name}"
+        if args.max_desc_chars and len(desc) > args.max_desc_chars:
+            desc = desc[: args.max_desc_chars] + "..."
         samples.append(
             {
                 "sample_index": collected,
@@ -187,6 +221,7 @@ def visualize(args):
                 "prediction": {"index": pred_idx, "name": pred_name},
                 "topk": topk,
                 "description": desc,
+                "image_tensor": batch["image"].squeeze(0).cpu(),
             }
         )
         if show_grid:
@@ -227,34 +262,46 @@ def visualize(args):
         except Exception:
             font = None
         for s in samples:
-            # reuse dataset to get image tensor
-            img_tensor = test_dataset[s["sample_index"]]["image"]
+            img_tensor = s["image_tensor"]
             pil_img = tensor_to_pil(img_tensor)
             W, H = pil_img.size
-            topk_line = ", ".join(
+            topk_line = "TopK: " + ", ".join(
                 [f"{t['label_name']}({t['prob']:.2f})" for t in s["topk"]]
             )
-            desc_wrap = textwrap.fill(s["description"], width=70)
-            lines = [
+            topk_wrapped = textwrap.wrap(topk_line, width=70)
+            desc_wrapped = textwrap.wrap("Desc: " + s["description"], width=70)
+            header_lines = [
                 f"Sample {s['sample_index']}",
                 f"GT: {s['ground_truth']['name']} ({s['ground_truth']['index']})",
                 f"Pred: {s['prediction']['name']} ({s['prediction']['index']})",
-                f"TopK: {topk_line}",
-                f"Desc: {desc_wrap}",
             ]
+            lines = header_lines + topk_wrapped + desc_wrapped
             if font is None:
                 line_h = 14
+
+                def estimate_w(txt):
+                    return len(txt) * 6
             else:
                 line_h = font.getbbox("A")[3]
+
+                def estimate_w(txt):
+                    b = font.getbbox(txt if txt else "A")
+                    return b[2] - b[0]
+
             text_h = line_h * len(lines) + 10
-            panel = Image.new("RGB", (W, H + text_h), (255, 255, 255))
-            panel.paste(pil_img, (0, 0))
+            max_text_w = max(estimate_w(t) for t in lines) + 10
+            panel_w = max(W, max_text_w)
+            panel = Image.new("RGB", (panel_w, H + text_h), (255, 255, 255))
+            x_img = (panel_w - W) // 2
+            panel.paste(pil_img, (x_img, 0))
             draw = ImageDraw.Draw(panel)
             y = H + 5
             for ln in lines:
                 draw.text((5, y), ln, fill=(0, 0, 0), font=font)
                 y += line_h
-            draw.rectangle([0, 0, W - 1, H + text_h - 1], outline=(0, 0, 0), width=1)
+            draw.rectangle(
+                [0, 0, panel_w - 1, H + text_h - 1], outline=(0, 0, 0), width=1
+            )
             panels.append(panel)
         if args.layout == "vertical":
             total_h = sum(p.size[1] for p in panels) + (len(panels) - 1) * 8
@@ -272,6 +319,51 @@ def visualize(args):
             for p in panels:
                 composite.paste(p, (x, 0))
                 x += p.size[0] + 8
+        # Optional embedded JSON
+        if args.embed_json:
+            summary_obj = {"samples": samples}
+            raw_json = json.dumps(summary_obj, ensure_ascii=False, indent=2)
+            wrapped_lines = []
+            for ln in raw_json.splitlines():
+                if len(ln) <= args.json_wrap:
+                    wrapped_lines.append(ln)
+                else:
+                    s = ln
+                    while len(s) > args.json_wrap:
+                        wrapped_lines.append(s[: args.json_wrap])
+                        s = s[args.json_wrap :]
+                    if s:
+                        wrapped_lines.append(s)
+            try:
+                font2 = ImageFont.load_default()
+            except Exception:
+                font2 = font
+            font_use = font2 or font
+            line_h2 = font_use.getbbox("A")[3] if font_use else 14
+            pad = 6
+            est_char_w = 6
+            panel_w_json = max(len(t) for t in wrapped_lines) * est_char_w + pad * 2
+            panel_h_json = line_h2 * len(wrapped_lines) + pad * 2
+            json_panel = Image.new("RGB", (panel_w_json, panel_h_json), (255, 255, 255))
+            djson = ImageDraw.Draw(json_panel)
+            yj = pad
+            for ln in wrapped_lines:
+                djson.text((pad, yj), ln, fill=(0, 0, 0), font=font_use)
+                yj += line_h2
+            if args.layout == "vertical":
+                new_h = composite.size[1] + panel_h_json + 8
+                new_w = max(composite.size[0], panel_w_json)
+                extended = Image.new("RGB", (new_w, new_h), (235, 235, 235))
+                extended.paste(composite, (0, 0))
+                extended.paste(json_panel, (0, composite.size[1] + 8))
+            else:
+                new_w = composite.size[0] + panel_w_json + 8
+                new_h = max(composite.size[1], panel_h_json)
+                extended = Image.new("RGB", (new_w, new_h), (235, 235, 235))
+                extended.paste(composite, (0, 0))
+                extended.paste(json_panel, (composite.size[0] + 8, 0))
+            composite = extended
+
         comp_path = os.path.join(args.output_dir, "glami_predictions_composite.png")
         composite.save(comp_path)
         print(f"Saved composite visualization to {comp_path}")
@@ -282,10 +374,11 @@ def visualize(args):
                 pass
 
     # JSON export
-    json_path = os.path.join(args.output_dir, "glami_predictions.json")
-    with open(json_path, "w", encoding="utf-8") as f:
-        json.dump({"samples": samples}, f, ensure_ascii=False, indent=2)
-    print(f"Saved structured predictions to {json_path}")
+    if not args.no_json_file:
+        json_path = os.path.join(args.output_dir, "glami_predictions.json")
+        with open(json_path, "w", encoding="utf-8") as f:
+            json.dump({"samples": samples}, f, ensure_ascii=False, indent=2)
+        print(f"Saved structured predictions to {json_path}")
 
     # Console summary
     for s in samples:
