@@ -31,13 +31,16 @@ This repo contains two separate experiments for multimodal vision-and-language m
         - Edit `CONFIG.resume_checkpoint` in `config.py` to point to `checkpoint_best.pth` or another checkpoint, then rerun `python ML.py`.
      6. Adjust hyperparameters:
         - Edit `amazon/config.py` (batch_size, epochs, lr, scheduler, dropout, freezing, backbone choice, mixed precision, etc.).
-     7. Visualize & export VLM-style predictions:
-        ```bash
-        python visualize_results.py --model-path fusion_model_best.pth --num-samples 6 --top-k 5
-        ```
-        - Outputs:
-          - `amazon/vlm_outputs/predictions_grid.png`
-          - `amazon/vlm_outputs/predictions.json` (Top-K probs, descriptions, GT/Pred)
+       7. Console visualization (no files saved; prints ASCII/color blocks + Top-K):
+            ```bash
+            python visualize_results.py --model-path fusion_model_best.pth --num-samples 6 --top-k 5 --ascii-preview --color-ascii
+            ```
+            - Shows for each sample: (optional) ASCII or color block image, GT | Pred line, TopK list, truncated description text.
+            - Flags:
+               - `--ascii-preview`: enable grayscale ASCII output
+               - `--color-ascii`: use ANSI truecolor blocks (requires 24-bit terminal)
+               - `--ascii-width`: adjust character width (default 40)
+            - (Legacy grid/JSON export removed for lean terminal inspection. Reintroduce via prior git history if needed.)
 
 2. **GLAMI-1M Experiment (in `GLAMI-1M/` directory)**
    - Upgraded training workflow includes:
@@ -53,8 +56,14 @@ This repo contains two separate experiments for multimodal vision-and-language m
      ```bash
      python train.py --model MLP_fusion
      ```
-   - Adjust hyperparameters by editing `GLAMI-1M/config.py`.
-   - Resume training: set `resume` path in config (future extension for loading full optimizer/scaler state).
+    - Adjust hyperparameters by editing `GLAMI-1M/config.py`.
+    - Resume training: set `resume` path in config (future extension for loading full optimizer/scaler state).
+    - Console visualization (parity with Amazon script, prints only; no grid/JSON):
+       ```bash
+       python visualize_glami.py --checkpoint checkpoints/best_model.pth --model-type Q_cons_fusion --num-samples 6 --top-k 5 --ascii-preview --color-ascii
+       ```
+       - Output per sample: optional ASCII/color image, GT | Pred, TopK probabilities, source text (category name by default).
+       - Use `--text-column` to choose a different text field if present.
 
 ### GLAMI-1M Dataset Preparation
 
